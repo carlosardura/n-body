@@ -2,39 +2,40 @@ import numpy as np
 
 # octant in 3D space
 class Octree:
-    def __init__(self, rx: float, ry: float, rz: float, size: float):
+    def __init__(self, rx: float, ry: float, rz: float, size: float, depth: int = 0):
         self.xmin = rx
         self.ymin = ry
         self.zmin = rz
         self.size = size
+        self.depth = depth
 
         self.mid_x = rx + size / 2.0
         self.mid_y = ry + size / 2.0
         self.mid_z = rz + size / 2.0
 
     def NEZ(self): # north, east, zenith
-        return Octree(self.mid_x, self.mid_y, self.mid_z, self.size/2.0)
+        return Octree(self.mid_x, self.mid_y, self.mid_z, self.size/2.0, self.depth + 1)
 
     def NWZ(self): # north, west, zenith
-        return Octree(self.xmin, self.mid_y, self.mid_z, self.size/2.0)
+        return Octree(self.xmin, self.mid_y, self.mid_z, self.size/2.0, self.depth + 1)
 
     def SWZ(self): # south, west, zenith
-        return Octree(self.xmin, self.ymin, self.mid_z, self.size/2.0)
+        return Octree(self.xmin, self.ymin, self.mid_z, self.size/2.0, self.depth + 1)
 
     def SEZ(self): # south, east, zenith
-        return Octree(self.mid_x, self.ymin, self.mid_z, self.size/2.0)
+        return Octree(self.mid_x, self.ymin, self.mid_z, self.size/2.0, self.depth + 1)
 
     def NEN(self): # north, east, nadir
-        return Octree(self.mid_x, self.mid_y, self.zmin, self.size/2.0)
+        return Octree(self.mid_x, self.mid_y, self.zmin, self.size/2.0, self.depth + 1)
 
     def NWN(self): # north, west, nadir
-        return Octree(self.xmin, self.mid_y, self.zmin, self.size/2.0)
+        return Octree(self.xmin, self.mid_y, self.zmin, self.size/2.0, self.depth + 1)
 
     def SWN(self): # south, west, nadir
-        return Octree(self.xmin, self.ymin, self.zmin, self.size/2.0)
+        return Octree(self.xmin, self.ymin, self.zmin, self.size/2.0, self.depth + 1)
 
     def SEN(self): # south, east, nadir
-        return Octree(self.mid_x, self.ymin, self.zmin, self.size/2.0)
+        return Octree(self.mid_x, self.ymin, self.zmin, self.size/2.0, self.depth + 1)
 
 
 class Node:
@@ -56,11 +57,14 @@ class Node:
 
     def insertBody(self, body):
         if self.M_cm > 0:   # non-empty nodes
-            if self.external:
-                self.external = False   # more than one particle                
-                self._new_octant(self.body)
-            self._new_octant(body)
+            if self.octree.depth < 20:   # depth limit 
+                if self.external:
+                    self.external = False   # more than one particle                
+                    self._new_octant(self.body)
+                    self.body = None
 
+                self._new_octant(body)
+            
             # updates the center of mass
             self.R_cm = (self.M_cm * self.R_cm + body.m * body.r) / (self.M_cm + body.m)
             self.M_cm += body.m
