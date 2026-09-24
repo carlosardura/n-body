@@ -112,3 +112,30 @@ class Node:
                 else:       # SWN
                     if self.SWN is None: self.SWN = Node(self.octree.SWN())
                     self.SWN.insertBody(particle)
+
+
+    def multipole_acceptance_criterion(self, body, theta: float, epsilon: float, G: float):
+        if self.M_cm == 0 or self.body is body:   # ignore empty nodes and self-interactions
+            return 0.0, 0.0, 0.0
+
+        dx = self.R_cm[0] - body.r[0]
+        dy = self.R_cm[1] - body.r[1]
+        dz = self.R_cm[2] - body.r[2]
+        d2 = dx**2 + dy**2 + dz**2 + epsilon**2
+
+        if (self.octree.size**2 / d2 < theta**2) or self.external:   # valid approximation
+            a = G * self.M_cm / (d2 * np.sqrt(d2))
+            return a*dx, a*dy,a*dz
+        
+        else:
+            ax, ay, az = 0.0, 0.0, 0.0
+            children = [self.NWZ, self.NEZ, self.SWZ, self.SEZ, self.NWN, self.NEN, self.SWN, self.SEN]
+            
+            for child in children:
+                if child is not None:
+                    # recursion
+                    dax, day, daz = child.multipole_acceptance_criterion(body, theta, epsilon, G)
+                    ax += dax
+                    ay += day
+                    az += daz
+            return ax, ay, az
