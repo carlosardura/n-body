@@ -1,3 +1,5 @@
+import numpy as np
+
 # octant in 3D space
 class Octree:
     def __init__(self, rx: float, ry: float, rz: float, size: float):
@@ -35,13 +37,6 @@ class Octree:
         return Octree(self.xmin+self.size/2.0, self.ymin, self.zmin, self.size/2.0)
 
 
-    def inOctree(self, body):
-            x, y, z = body.r
-            return (self.xmin <= x < self.xmax) and \
-                (self.ymin <= y < self.ymax) and \
-                (self.zmin <= z < self.zmax)
-
-
 class Node:
     def __init__(self, octree):
         self.octree = octree
@@ -62,17 +57,7 @@ class Node:
     def insertBody(self, body):
         if self.body is not None:   # non-empty nodes
             if self.external:
-                self.external = False   # more than one particle
-
-                self.NWZ = Node(self.octree.NWZ())
-                self.NEZ = Node(self.octree.NEZ())
-                self.SWZ = Node(self.octree.SWZ())
-                self.SEZ = Node(self.octree.SEZ())
-                self.NWN = Node(self.octree.NWN())
-                self.NEN = Node(self.octree.NEN())
-                self.SWN = Node(self.octree.SWN())
-                self.SEN = Node(self.octree.SEN())
-                
+                self.external = False   # more than one particle                
                 self._new_octant(self.body)
             self._new_octant(body)
 
@@ -88,19 +73,42 @@ class Node:
 
 
     def _new_octant(self, particle):
-        if self.NWZ.octree.inOctree(particle):
-            self.NWZ.insertBody(particle)
-        elif self.NEZ.octree.inOctree(particle):
-            self.NEZ.insertBody(particle)
-        elif self.SWZ.octree.inOctree(particle):
-            self.SWZ.insertBody(particle)
-        elif self.SEZ.octree.inOctree(particle):
-            self.SEZ.insertBody(particle)
-        elif self.NWN.octree.inOctree(particle):
-            self.NWN.insertBody(particle)
-        elif self.NEN.octree.inOctree(particle):
-            self.NEN.insertBody(particle)
-        elif self.SWN.octree.inOctree(particle):
-            self.SWN.insertBody(particle)
-        elif self.SEN.octree.inOctree(particle):
-            self.SEN.insertBody(particle)
+        px, py, pz = particle.r
+        mid_x = self.octree.xmin + self.octree.size / 2.0
+        mid_y = self.octree.ymin + self.octree.size / 2.0
+        mid_z = self.octree.zmin + self.octree.size / 2.0
+
+        is_east = px >= mid_x
+        is_north = py >= mid_y
+        is_zenith = pz >= mid_z
+
+        if is_zenith:
+            if is_north:
+                if is_east: # NEZ
+                    if self.NEZ is None: self.NEZ = Node(self.octree.NEZ())
+                    self.NEZ.insertBody(particle)
+                else:       # NWZ
+                    if self.NWZ is None: self.NWZ = Node(self.octree.NWZ())
+                    self.NWZ.insertBody(particle)
+            else:
+                if is_east: # SEZ
+                    if self.SEZ is None: self.SEZ = Node(self.octree.SEZ())
+                    self.SEZ.insertBody(particle)
+                else:       # SWZ
+                    if self.SWZ is None: self.SWZ = Node(self.octree.SWZ())
+                    self.SWZ.insertBody(particle)
+        else:
+            if is_north:
+                if is_east: # NEN
+                    if self.NEN is None: self.NEN = Node(self.octree.NEN())
+                    self.NEN.insertBody(particle)
+                else:       # NWN
+                    if self.NWN is None: self.NWN = Node(self.octree.NWN())
+                    self.NWN.insertBody(particle)
+            else:
+                if is_east: # SEN
+                    if self.SEN is None: self.SEN = Node(self.octree.SEN())
+                    self.SEN.insertBody(particle)
+                else:       # SWN
+                    if self.SWN is None: self.SWN = Node(self.octree.SWN())
+                    self.SWN.insertBody(particle)
