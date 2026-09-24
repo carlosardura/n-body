@@ -8,33 +8,33 @@ class Octree:
         self.zmin = rz
         self.size = size
 
-        self.xmax = rx + size
-        self.ymax = ry + size
-        self.zmax = rz + size
+        self.mid_x = rx + size / 2.0
+        self.mid_y = ry + size / 2.0
+        self.mid_z = rz + size / 2.0
 
     def NEZ(self): # north, east, zenith
-        return Octree(self.xmin+self.size/2.0, self.ymin+self.size/2.0, self.zmin+self.size/2.0, self.size/2.0)
+        return Octree(self.mid_x, self.mid_y, self.mid_z, self.size/2.0)
 
     def NWZ(self): # north, west, zenith
-        return Octree(self.xmin, self.ymin+self.size/2.0, self.zmin+self.size/2.0, self.size/2.0)
+        return Octree(self.xmin, self.mid_y, self.mid_z, self.size/2.0)
 
     def SWZ(self): # south, west, zenith
-        return Octree(self.xmin, self.ymin, self.zmin+self.size/2.0, self.size/2.0)
+        return Octree(self.xmin, self.ymin, self.mid_z, self.size/2.0)
 
     def SEZ(self): # south, east, zenith
-        return Octree(self.xmin+self.size/2.0, self.ymin, self.zmin+self.size/2.0, self.size/2.0)
+        return Octree(self.mid_x, self.ymin, self.mid_z, self.size/2.0)
 
     def NEN(self): # north, east, nadir
-        return Octree(self.xmin+self.size/2.0, self.ymin+self.size/2.0, self.zmin, self.size/2.0)
+        return Octree(self.mid_x, self.mid_y, self.zmin, self.size/2.0)
 
     def NWN(self): # north, west, nadir
-        return Octree(self.xmin, self.ymin+self.size/2.0, self.zmin, self.size/2.0)
+        return Octree(self.xmin, self.mid_y, self.zmin, self.size/2.0)
 
     def SWN(self): # south, west, nadir
         return Octree(self.xmin, self.ymin, self.zmin, self.size/2.0)
 
     def SEN(self): # south, east, nadir
-        return Octree(self.xmin+self.size/2.0, self.ymin, self.zmin, self.size/2.0)
+        return Octree(self.mid_x, self.ymin, self.zmin, self.size/2.0)
 
 
 class Node:
@@ -55,7 +55,7 @@ class Node:
         self.SEN = None
 
     def insertBody(self, body):
-        if self.body is not None:   # non-empty nodes
+        if self.M_cm > 0:   # non-empty nodes
             if self.external:
                 self.external = False   # more than one particle                
                 self._new_octant(self.body)
@@ -74,13 +74,10 @@ class Node:
 
     def _new_octant(self, particle):
         px, py, pz = particle.r
-        mid_x = self.octree.xmin + self.octree.size / 2.0
-        mid_y = self.octree.ymin + self.octree.size / 2.0
-        mid_z = self.octree.zmin + self.octree.size / 2.0
 
-        is_east = px >= mid_x
-        is_north = py >= mid_y
-        is_zenith = pz >= mid_z
+        is_east = px >= self.octree.mid_x
+        is_north = py >= self.octree.mid_y
+        is_zenith = pz >= self.octree.mid_z
 
         if is_zenith:
             if is_north:
