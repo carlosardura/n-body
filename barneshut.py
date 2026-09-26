@@ -13,30 +13,6 @@ class Octree:
         self.mid_y = ry + size / 2.0
         self.mid_z = rz + size / 2.0
 
-    def NEZ(self): # north, east, zenith
-        return Octree(self.mid_x, self.mid_y, self.mid_z, self.size/2.0, self.depth + 1)
-
-    def NWZ(self): # north, west, zenith
-        return Octree(self.xmin, self.mid_y, self.mid_z, self.size/2.0, self.depth + 1)
-
-    def SWZ(self): # south, west, zenith
-        return Octree(self.xmin, self.ymin, self.mid_z, self.size/2.0, self.depth + 1)
-
-    def SEZ(self): # south, east, zenith
-        return Octree(self.mid_x, self.ymin, self.mid_z, self.size/2.0, self.depth + 1)
-
-    def NEN(self): # north, east, nadir
-        return Octree(self.mid_x, self.mid_y, self.zmin, self.size/2.0, self.depth + 1)
-
-    def NWN(self): # north, west, nadir
-        return Octree(self.xmin, self.mid_y, self.zmin, self.size/2.0, self.depth + 1)
-
-    def SWN(self): # south, west, nadir
-        return Octree(self.xmin, self.ymin, self.zmin, self.size/2.0, self.depth + 1)
-
-    def SEN(self): # south, east, nadir
-        return Octree(self.mid_x, self.ymin, self.zmin, self.size/2.0, self.depth + 1)
-
 
 class Node:
     def __init__(self, octree):
@@ -45,15 +21,7 @@ class Node:
         self.R_cm = None
         self.M_cm = 0.0
         self.external = True
-
-        self.NWZ = None
-        self.NEZ = None
-        self.SWZ = None
-        self.SEZ = None
-        self.NWN = None
-        self.NEN = None
-        self.SWN = None
-        self.SEN = None
+        self.children = [None] * 8
 
     def insertBody(self, body):
         if self.M_cm > 0:   # non-empty nodes
@@ -78,41 +46,18 @@ class Node:
 
     def _new_octant(self, particle):
         px, py, pz = particle.r
+        index = (px >= self.octree.mid_x) | ((py >= self.octree.mid_y) << 1) | ((pz >= self.octree.mid_z) << 2)
+        
+        if self.children[index] is None:
+        # initializes the octants when the first particle is added
+            nx = self.octree.mid_x if (index & 1) else self.octree.xmin
+            ny = self.octree.mid_y if (index & 2) else self.octree.ymin
+            nz = self.octree.mid_z if (index & 4) else self.octree.zmin
+            
+            new_octree = Octree(nx, ny, nz, self.octree.size / 2.0, self.octree.depth + 1)
+            self.children[index] = Node(new_octree)
 
-        is_east = px >= self.octree.mid_x
-        is_north = py >= self.octree.mid_y
-        is_zenith = pz >= self.octree.mid_z
-
-        if is_zenith:
-            if is_north:
-                if is_east: # NEZ
-                    if self.NEZ is None: self.NEZ = Node(self.octree.NEZ())
-                    self.NEZ.insertBody(particle)
-                else:       # NWZ
-                    if self.NWZ is None: self.NWZ = Node(self.octree.NWZ())
-                    self.NWZ.insertBody(particle)
-            else:
-                if is_east: # SEZ
-                    if self.SEZ is None: self.SEZ = Node(self.octree.SEZ())
-                    self.SEZ.insertBody(particle)
-                else:       # SWZ
-                    if self.SWZ is None: self.SWZ = Node(self.octree.SWZ())
-                    self.SWZ.insertBody(particle)
-        else:
-            if is_north:
-                if is_east: # NEN
-                    if self.NEN is None: self.NEN = Node(self.octree.NEN())
-                    self.NEN.insertBody(particle)
-                else:       # NWN
-                    if self.NWN is None: self.NWN = Node(self.octree.NWN())
-                    self.NWN.insertBody(particle)
-            else:
-                if is_east: # SEN
-                    if self.SEN is None: self.SEN = Node(self.octree.SEN())
-                    self.SEN.insertBody(particle)
-                else:       # SWN
-                    if self.SWN is None: self.SWN = Node(self.octree.SWN())
-                    self.SWN.insertBody(particle)
+        self.children[index].insertBody(particle)
 
 
     def multipole_acceptance_criterion(self, body, theta: float, epsilon: float, G: float):
@@ -130,9 +75,7 @@ class Node:
         
         else:
             ax, ay, az = 0.0, 0.0, 0.0
-            children = [self.NWZ, self.NEZ, self.SWZ, self.SEZ, self.NWN, self.NEN, self.SWN, self.SEN]
-            
-            for child in children:
+            for child in self.children:
                 if child is not None:
                     # recursion
                     dax, day, daz = child.multipole_acceptance_criterion(body, theta, epsilon, G)
