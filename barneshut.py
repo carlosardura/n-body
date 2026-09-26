@@ -60,22 +60,28 @@ class Cell:
         if self.M_cm == 0 or self.body is body:   # ignore empty nodes and self-interactions
             return 0.0, 0.0, 0.0
 
-        dx = self.R_cm[0] - body.r[0]
-        dy = self.R_cm[1] - body.r[1]
-        dz = self.R_cm[2] - body.r[2]
-        d2 = dx**2 + dy**2 + dz**2 + epsilon**2
+        ax, ay, az = 0.0, 0.0, 0.0
+        stack = [self]
+        while stack:
+            current = stack.pop()
 
-        if (self.size**2 / d2 < theta**2) or self.external:   # valid approximation
-            a = G * self.M_cm / (d2 * np.sqrt(d2))
-            return a*dx, a*dy,a*dz
+            if current.M_cm == 0 or current.body is body:
+                continue
+
+            dx = current.R_cm[0] - body.r[0]
+            dy = current.R_cm[1] - body.r[1]
+            dz = current.R_cm[2] - body.r[2]
+            d2 = dx**2 + dy**2 + dz**2 + epsilon**2
+
+            if (current.size**2 / d2 < theta**2) or current.external:   # valid approximation
+                a = G * current.M_cm / (d2 * np.sqrt(d2))
+                ax += a * dx
+                ay += a * dy
+                az += a * dz
         
-        else:
-            ax, ay, az = 0.0, 0.0, 0.0
-            for child in self.children:
-                if child is not None:
-                    # recursion
-                    dax, day, daz = child.multipole_acceptance_criterion(body, theta, epsilon, G)
-                    ax += dax
-                    ay += day
-                    az += daz
-            return ax, ay, az
+            else:
+                for child in current.children:
+                    if child is not None:
+                        stack.append(child)
+
+        return ax, ay, az
