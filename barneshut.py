@@ -1,22 +1,20 @@
 import numpy as np
 
-# octant in 3D space
-class Octree:
+class Cell:
+    __slots__ = ['xmin', 'ymin', 'zmin', 'mid_x', 'mid_y', 'mid_z', 'size', 'depth', 'body', 'R_cm', 'M_cm', 'external', 'children']
+
     def __init__(self, rx: float, ry: float, rz: float, size: float, depth: int = 0):
         self.xmin = rx
         self.ymin = ry
         self.zmin = rz
-        self.size = size
-        self.depth = depth
-
+        
         self.mid_x = rx + size / 2.0
         self.mid_y = ry + size / 2.0
         self.mid_z = rz + size / 2.0
 
+        self.size = size
+        self.depth = depth
 
-class Node:
-    def __init__(self, octree):
-        self.octree = octree
         self.body = None
         self.R_cm = None
         self.M_cm = 0.0
@@ -25,7 +23,7 @@ class Node:
 
     def insertBody(self, body):
         if self.M_cm > 0:   # non-empty nodes
-            if self.octree.depth < 20:   # depth limit 
+            if self.depth < 20:   # depth limit 
                 if self.external:
                     self.external = False   # more than one particle                
                     self._new_octant(self.body)
@@ -46,17 +44,15 @@ class Node:
 
     def _new_octant(self, particle):
         px, py, pz = particle.r
-        index = (px >= self.octree.mid_x) | ((py >= self.octree.mid_y) << 1) | ((pz >= self.octree.mid_z) << 2)
+        index = (px >= self.mid_x) | ((py >= self.mid_y) << 1) | ((pz >= self.mid_z) << 2)
         
         if self.children[index] is None:
         # initializes the octants when the first particle is added
-            nx = self.octree.mid_x if (index & 1) else self.octree.xmin
-            ny = self.octree.mid_y if (index & 2) else self.octree.ymin
-            nz = self.octree.mid_z if (index & 4) else self.octree.zmin
+            nx = self.mid_x if (index & 1) else self.xmin
+            ny = self.mid_y if (index & 2) else self.ymin
+            nz = self.mid_z if (index & 4) else self.zmin
             
-            new_octree = Octree(nx, ny, nz, self.octree.size / 2.0, self.octree.depth + 1)
-            self.children[index] = Node(new_octree)
-
+            self.children[index] = Cell(nx, ny, nz, self.size / 2.0, self.depth + 1)
         self.children[index].insertBody(particle)
 
 
@@ -69,7 +65,7 @@ class Node:
         dz = self.R_cm[2] - body.r[2]
         d2 = dx**2 + dy**2 + dz**2 + epsilon**2
 
-        if (self.octree.size**2 / d2 < theta**2) or self.external:   # valid approximation
+        if (self.size**2 / d2 < theta**2) or self.external:   # valid approximation
             a = G * self.M_cm / (d2 * np.sqrt(d2))
             return a*dx, a*dy,a*dz
         
