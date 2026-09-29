@@ -15,9 +15,9 @@ if __name__ == "__main__":
     v_cm = np.sum(m * v, axis=0) / M
     v -= v_cm
 
-    os.makedirs('data', exist_ok=True)
+    os.makedirs('../data', exist_ok=True)
     
-    with h5py.File('data/init.h5', 'w') as f:
+    with h5py.File('../data/init.h5', 'w') as f:
         f.create_dataset('positions', data=r, dtype='float64')
         f.create_dataset('velocities', data=v, dtype='float64')
         f.create_dataset('masses', data=m, dtype='float64')
