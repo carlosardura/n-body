@@ -219,3 +219,23 @@ __marimo__/
 
 # N-Body Simulation Data
 data/*.h5
+
+# C++ & CMake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+compile_commands.json
+*.o
+*.a
+*.dylib
+*.out
+
+# Main executable binary
+nbody
+build/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
