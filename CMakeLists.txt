@@ -9,7 +9,9 @@ find_package(HDF5 REQUIRED COMPONENTS CXX)
 set(SOURCES
     src/main.cpp
     src/barneshut.cpp
+    src/integrator.cpp
     src/morton_code.cpp
+    src/io.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
