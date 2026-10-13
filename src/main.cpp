@@ -1,8 +1,40 @@
 #include <H5Cpp.h>
 #include <vector>
+#include <iostream>
 #include <string>
 #include <stdexcept>
 #include "types.h"
+#include "integrator.h"
+#include "barneshut.h"
+#include "morton_code.h"
+#include "io.h"
+
+Cell compute_bounds(const std::vector<PosMass>& pos_mass) {
+    if (pos_mass.empty()) return {};
+
+    double min_x = pos_mass[0].x, max_x = pos_mass[0].x;
+    double min_y = pos_mass[0].y, max_y = pos_mass[0].y;
+    double min_z = pos_mass[0].z, max_z = pos_mass[0].z;
+
+    for (const auto& p : pos_mass) {
+        if (p.x < min_x) min_x = p.x; if (p.x > max_x) max_x = p.x;
+        if (p.y < min_y) min_y = p.y; if (p.y > max_y) max_y = p.y;
+        if (p.z < min_z) min_z = p.z; if (p.z > max_z) max_z = p.z;
+    }
+
+    double span_x = max_x - min_x;
+    double span_y = max_y - min_y;
+    double span_z = max_z - min_z;
+
+    Cell bbox;
+    bbox.xmin = min_x;
+    bbox.ymin = min_y;
+    bbox.zmin = min_z;
+    bbox.max_span = std::max({span_x, span_y, span_z});
+
+    return bbox;
+}
+
 
 int main(int argc, char* argv[]) {
     if (argc != 10) {
@@ -50,11 +82,12 @@ int main(int argc, char* argv[]) {
             v.vx = vbuffer[i * 3];
             v.vy = vbuffer[i * 3 + 1];
             v.vz = vbuffer[i * 3 + 2];
-            v.v_padding = 0.0;
+            v.padding = 0.0;
 
             system.pos_mass.push_back(pm);
             system.velocities.push_back(v);
             system.ids.push_back(static_cast<uint32_t>(i));
+
         } 
     
     } catch (const H5::Exception& e) {

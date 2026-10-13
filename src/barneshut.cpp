@@ -7,7 +7,7 @@ BarnesHut::BarnesHut() {
 }
 
 
-int32_t BarnesHut::cell(double xmin, double ymin, double zmin, double size, int32_t depth) {
+int32_t BarnesHut::construct_cell(double xmin, double ymin, double zmin, double size, int32_t depth) {
     Cell cell;
     cell.xmin = xmin; 
     cell.ymin = ymin; 
@@ -31,12 +31,12 @@ int32_t BarnesHut::get_octant(int32_t cell_idx, const PosMass& p) const {
 }
 
 
-inline void BarnesHut::new_octant(int32_t cell_idx, int32_t octant) {
+void BarnesHut::new_octant(int32_t cell_idx, int32_t octant) {
     if (cells[cell_idx].children[octant] == -1) {
         double nx = (octant & 1) ? cells[cell_idx].mid_x : cells[cell_idx].xmin;
         double ny = (octant & 2) ? cells[cell_idx].mid_y : cells[cell_idx].ymin;
         double nz = (octant & 4) ? cells[cell_idx].mid_z : cells[cell_idx].zmin;
-        cells[cell_idx].children[octant] = cell(nx, ny, nz, cells[cell_idx].size / 2.0, cells[cell_idx].depth + 1);
+        cells[cell_idx].children[octant] = construct_cell(nx, ny, nz, cells[cell_idx].size / 2.0, cells[cell_idx].depth + 1);
     }
 }
 
@@ -80,22 +80,11 @@ void BarnesHut::insert_body(int32_t cell_idx, int32_t body_idx, const std::vecto
 }
 
 
-void BarnesHut::partition_space(const std::vector<PosMass>& pos_mass) {
+void BarnesHut::partition_space(const std::vector<PosMass>& pos_mass, const Cell& bbox) {
     cells.clear();
     if (pos_mass.empty()) return;
 
-    double min_x = pos_mass[0].x, max_x = pos_mass[0].x;
-    double min_y = pos_mass[0].y, max_y = pos_mass[0].y;
-    double min_z = pos_mass[0].z, max_z = pos_mass[0].z;
-
-    for (const auto& p : pos_mass) {
-        if (p.x < min_x) min_x = p.x; if (p.x > max_x) max_x = p.x;
-        if (p.y < min_y) min_y = p.y; if (p.y > max_y) max_y = p.y;
-        if (p.z < min_z) min_z = p.z; if (p.z > max_z) max_z = p.z;
-    }
-
-    double max_span = std::max({max_x - min_x, max_y - min_y, max_z - min_z});
-    int32_t root = cell(min_x, min_y, min_z, max_span, 0);
+    int32_t root = construct_cell(bbox.xmin, bbox.ymin, bbox.zmin, bbox.max_span, 0);
 
     for (size_t i = 0; i < pos_mass.size(); ++i) {
         insert_body(root, static_cast<int32_t>(i), pos_mass);
@@ -103,15 +92,14 @@ void BarnesHut::partition_space(const std::vector<PosMass>& pos_mass) {
 }
 
 
-void BarnesHut::update_accelerations(const std::vector<PosMass>& pos_mass, std::vector<PosMass>& accelerations, double theta, double epsilon, double G) {
+void BarnesHut::compute_force(const std::vector<PosMass>& pos_mass, std::vector<PosMass>& accelerations, double theta, double epsilon, double G) {
     if (cells.empty()) return;
-    
-    std::vector<int32_t> stack;
-    stack.reserve(256);
 
     for (size_t i = 0; i < pos_mass.size(); ++i) {
         double ax = 0.0, ay = 0.0, az = 0.0;
-        stack.clear();
+
+        std::vector<int32_t> stack;
+        stack.reserve(256);
         stack.push_back(0);
 
         while (!stack.empty()) {

@@ -16,6 +16,7 @@ struct Cell {
     double xmin = 0.0, ymin = 0.0, zmin = 0.0;
     double mid_x = 0.0, mid_y = 0.0, mid_z = 0.0;
     double size = 0.0; 
+    double max_span = 0.0;
 
     double x_cm = 0.0, y_cm = 0.0, z_cm = 0.0; 
     double M = 0.0;
