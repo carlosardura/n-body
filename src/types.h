@@ -9,23 +9,25 @@ struct alignas(32) PosMass {
 
 struct alignas(32) Velocity {
     double vx = 0.0, vy = 0.0, vz = 0.0;
-    double padding = 0.0; 
+    double v_padding = 0.0; 
 };
 
-struct Cell {
+struct alignas(64) OctantDomain {
     double xmin = 0.0, ymin = 0.0, zmin = 0.0;
     double mid_x = 0.0, mid_y = 0.0, mid_z = 0.0;
     double size = 0.0; 
     double max_span = 0.0;
-
-    double x_cm = 0.0, y_cm = 0.0, z_cm = 0.0; 
-    double M = 0.0;
-
-    int32_t children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
-    int32_t body_idx = -1;
-    bool external = true;
-    int32_t depth = 0;
 };
+
+struct alignas(64) MultipoleNode {
+    double x_cm = 0.0, y_cm = 0.0, z_cm = 0.0;
+    double M = 0.0;
+    int32_t first_child = -1;
+    int32_t body_idx = -1;
+    int32_t depth = 0;
+    int32_t padding_node[5] = {0, 0, 0, 0, 0};
+};
+    
 
 struct BodySystem {
     std::vector<PosMass> pos_mass;

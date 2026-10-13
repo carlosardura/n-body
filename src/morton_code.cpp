@@ -11,7 +11,7 @@ namespace MortonCode {
         uint32_t original_index;
     };
 
-    void sort_system(BodySystem& system, const Cell& bbox) {
+    void sort_system(BodySystem& system, const OctantDomain& bbox) {
         size_t n = system.size();
         if (n <= 1 || bbox.max_span == 0.0) return;
 

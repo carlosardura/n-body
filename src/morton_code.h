@@ -2,5 +2,5 @@
 #include "types.h"
 
 namespace MortonCode {
-    void sort_system(BodySystem& system, const Cell& bbox);
+    void sort_system(BodySystem& system, const OctantDomain& bbox);
 }

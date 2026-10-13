@@ -3,13 +3,16 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <thread>
+#include <cmath>
+#include <algorithm>
 #include "types.h"
 #include "integrator.h"
 #include "barneshut.h"
 #include "morton_code.h"
 #include "io.h"
 
-Cell compute_bounds(const std::vector<PosMass>& pos_mass) {
+OctantDomain compute_bounds(const std::vector<PosMass>& pos_mass) {
     if (pos_mass.empty()) return {};
 
     double min_x = pos_mass[0].x, max_x = pos_mass[0].x;
@@ -26,11 +29,15 @@ Cell compute_bounds(const std::vector<PosMass>& pos_mass) {
     double span_y = max_y - min_y;
     double span_z = max_z - min_z;
 
-    Cell bbox;
+    OctantDomain bbox;
     bbox.xmin = min_x;
     bbox.ymin = min_y;
     bbox.zmin = min_z;
     bbox.max_span = std::max({span_x, span_y, span_z});
+    bbox.size = bbox.max_span;
+    bbox.mid_x = min_x + bbox.size / 2.0;
+    bbox.mid_y = min_y + bbox.size / 2.0;
+    bbox.mid_z = min_z + bbox.size / 2.0;
 
     return bbox;
 }
@@ -82,12 +89,11 @@ int main(int argc, char* argv[]) {
             v.vx = vbuffer[i * 3];
             v.vy = vbuffer[i * 3 + 1];
             v.vz = vbuffer[i * 3 + 2];
-            v.padding = 0.0;
+            v.v_padding = 0.0;
 
             system.pos_mass.push_back(pm);
             system.velocities.push_back(v);
             system.ids.push_back(static_cast<uint32_t>(i));
-
         } 
     
     } catch (const H5::Exception& e) {
