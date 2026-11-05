@@ -16,7 +16,7 @@ namespace MortonCode {
         if (n <= 1 || bbox.max_span == 0.0) return;
 
         double inv_span = 1.0 / bbox.max_span;
-        const uint32_t max_bins = (1 << 21) - 1;   // 21 bits per axis
+        const uint32_t max_bins = (1 << 21) - 1;
 
         std::vector<ParticleCode> codes(n);
         for (size_t i = 0; i < n; ++i) {
@@ -32,30 +32,30 @@ namespace MortonCode {
             return a.code < b.code;
         });
 
-        BodySystem temp_system;
-        temp_system.resize(n);
+        BodySystem morton_system;
+        morton_system.resize(n);
 
         for (size_t i = 0; i < n; ++i) {
             uint32_t orig_idx = codes[i].original_index;
-            temp_system.x[i] = system.x[orig_idx];
-            temp_system.y[i] = system.y[orig_idx];
-            temp_system.z[i] = system.z[orig_idx];
-            temp_system.mass[i] = system.mass[orig_idx];
+            morton_system.x[i] = system.x[orig_idx];
+            morton_system.y[i] = system.y[orig_idx];
+            morton_system.z[i] = system.z[orig_idx];
+            morton_system.mass[i] = system.mass[orig_idx];
 
-            temp_system.vx[i] = system.vx[orig_idx];
-            temp_system.vy[i] = system.vy[orig_idx];
-            temp_system.vz[i] = system.vz[orig_idx];
+            morton_system.vx[i] = system.vx[orig_idx];
+            morton_system.vy[i] = system.vy[orig_idx];
+            morton_system.vz[i] = system.vz[orig_idx];
 
-            temp_system.ids[i] = system.ids[orig_idx];
+            morton_system.ids[i] = system.ids[orig_idx];
         }
 
-        system.x = std::move(temp_system.x);
-        system.y = std::move(temp_system.y);
-        system.z = std::move(temp_system.z);
-        system.mass = std::move(temp_system.mass);
-        system.vx = std::move(temp_system.vx);
-        system.vy = std::move(temp_system.vy);
-        system.vz = std::move(temp_system.vz);
-        system.ids = std::move(temp_system.ids);
+        system.x = std::move(morton_system.x);
+        system.y = std::move(morton_system.y);
+        system.z = std::move(morton_system.z);
+        system.mass = std::move(morton_system.mass);
+        system.vx = std::move(morton_system.vx);
+        system.vy = std::move(morton_system.vy);
+        system.vz = std::move(morton_system.vz);
+        system.ids = std::move(morton_system.ids);
     }
 }
