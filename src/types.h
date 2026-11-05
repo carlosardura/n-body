@@ -2,16 +2,6 @@
 #include <vector>
 #include <cstdint>
 
-struct alignas(32) PosMass {
-    double x = 0.0, y = 0.0, z = 0.0;
-    double mass = 0.0;
-};
-
-struct alignas(32) Velocity {
-    double vx = 0.0, vy = 0.0, vz = 0.0;
-    double v_padding = 0.0; 
-};
-
 struct alignas(64) OctantDomain {
     double xmin = 0.0, ymin = 0.0, zmin = 0.0;
     double mid_x = 0.0, mid_y = 0.0, mid_z = 0.0;
@@ -30,15 +20,31 @@ struct alignas(64) MultipoleNode {
     
 
 struct BodySystem {
-    std::vector<PosMass> pos_mass;
-    std::vector<Velocity> velocities;
-    std::vector<uint32_t> ids; 
- 
-    size_t size() const { return pos_mass.size(); }
-    
+    std::vector<double> x;
+    std::vector<double> y;
+    std::vector<double> z;
+    std::vector<double> mass;
+
+    std::vector<double> vx;
+    std::vector<double> vy;
+    std::vector<double> vz;
+
+    std::vector<uint32_t> ids;
+
+    size_t num_bodies = 0;
+
+    size_t size() const { return num_bodies; }
+
     void reserve(size_t n) {
-        pos_mass.reserve(n);
-        velocities.reserve(n);
+        x.reserve(n); y.reserve(n); z.reserve(n); mass.reserve(n);
+        vx.reserve(n); vy.reserve(n); vz.reserve(n);
         ids.reserve(n);
+    }
+    
+    void resize(size_t n) {
+        x.resize(n, 0.0); y.resize(n, 0.0); z.resize(n, 0.0); mass.resize(n, 0.0);
+        vx.resize(n, 0.0); vy.resize(n, 0.0); vz.resize(n, 0.0);
+        ids.resize(n, 0);
+        num_bodies = n;
     }
 };

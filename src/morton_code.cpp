@@ -16,13 +16,13 @@ namespace MortonCode {
         if (n <= 1 || bbox.max_span == 0.0) return;
 
         double inv_span = 1.0 / bbox.max_span;
-        const uint32_t max_bins = (1 << 21) - 1;
+        const uint32_t max_bins = (1 << 21) - 1;   // 21 bits per axis
 
         std::vector<ParticleCode> codes(n);
         for (size_t i = 0; i < n; ++i) {
-            uint32_t bx = static_cast<uint32_t>((system.pos_mass[i].x - bbox.xmin) * inv_span * max_bins);
-            uint32_t by = static_cast<uint32_t>((system.pos_mass[i].y - bbox.ymin) * inv_span * max_bins);
-            uint32_t bz = static_cast<uint32_t>((system.pos_mass[i].z - bbox.zmin) * inv_span * max_bins);
+            uint32_t bx = static_cast<uint32_t>((system.x[i] - bbox.xmin) * inv_span * max_bins);
+            uint32_t by = static_cast<uint32_t>((system.y[i] - bbox.ymin) * inv_span * max_bins);
+            uint32_t bz = static_cast<uint32_t>((system.z[i] - bbox.zmin) * inv_span * max_bins);
             
             codes[i].code = libmorton::morton3D_64_encode(bx, by, bz);
             codes[i].original_index = static_cast<uint32_t>(i);
@@ -32,19 +32,30 @@ namespace MortonCode {
             return a.code < b.code;
         });
 
-        std::vector<PosMass> temp_pos_mass(n);
-        std::vector<Velocity> temp_velocities(n);
-        std::vector<uint32_t> temp_ids(n);
+        BodySystem temp_system;
+        temp_system.resize(n);
 
         for (size_t i = 0; i < n; ++i) {
             uint32_t orig_idx = codes[i].original_index;
-            temp_pos_mass[i] = system.pos_mass[orig_idx];
-            temp_velocities[i] = system.velocities[orig_idx];
-            temp_ids[i] = system.ids[orig_idx];
+            temp_system.x[i] = system.x[orig_idx];
+            temp_system.y[i] = system.y[orig_idx];
+            temp_system.z[i] = system.z[orig_idx];
+            temp_system.mass[i] = system.mass[orig_idx];
+
+            temp_system.vx[i] = system.vx[orig_idx];
+            temp_system.vy[i] = system.vy[orig_idx];
+            temp_system.vz[i] = system.vz[orig_idx];
+
+            temp_system.ids[i] = system.ids[orig_idx];
         }
 
-        system.pos_mass = std::move(temp_pos_mass);
-        system.velocities = std::move(temp_velocities);
-        system.ids = std::move(temp_ids);
+        system.x = std::move(temp_system.x);
+        system.y = std::move(temp_system.y);
+        system.z = std::move(temp_system.z);
+        system.mass = std::move(temp_system.mass);
+        system.vx = std::move(temp_system.vx);
+        system.vy = std::move(temp_system.vy);
+        system.vz = std::move(temp_system.vz);
+        system.ids = std::move(temp_system.ids);
     }
 }

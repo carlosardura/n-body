@@ -13,13 +13,13 @@ namespace IO {
         std::vector<double> out_v(n * 3);
 
         for (size_t i = 0; i < n; ++i) {
-            out_r[i * 3] = system.pos_mass[i].x;
-            out_r[i * 3 + 1] = system.pos_mass[i].y;
-            out_r[i * 3 + 2] = system.pos_mass[i].z;
+            out_r[i * 3] = system.x[i];
+            out_r[i * 3 + 1] = system.y[i];
+            out_r[i * 3 + 2] = system.z[i];
 
-            out_v[i * 3] = system.velocities[i].vx;
-            out_v[i * 3 + 1] = system.velocities[i].vy;
-            out_v[i * 3 + 2] = system.velocities[i].vz;
+            out_v[i * 3] = system.vx[i];
+            out_v[i * 3 + 1] = system.vy[i];
+            out_v[i * 3 + 2] = system.vz[i];
         }
 
         int width = std::to_string(total_steps).length();
@@ -39,7 +39,7 @@ namespace IO {
             dataset_vel.write(out_v.data(), H5::PredType::NATIVE_DOUBLE);
             
         } catch (const H5::Exception& e) {
-            throw std::runtime_error("Unable to write'" + filename.str() + "'data to file.");
+            throw std::runtime_error("Unable to write '" + filename.str() + "' data to file.");
         }
     }
 }

@@ -12,17 +12,17 @@
 #include "morton_code.h"
 #include "io.h"
 
-OctantDomain compute_bounds(const std::vector<PosMass>& pos_mass) {
-    if (pos_mass.empty()) return {};
+OctantDomain compute_bounds(const BodySystem& system) {
+    if (system.size() == 0) return {};
 
-    double min_x = pos_mass[0].x, max_x = pos_mass[0].x;
-    double min_y = pos_mass[0].y, max_y = pos_mass[0].y;
-    double min_z = pos_mass[0].z, max_z = pos_mass[0].z;
+    double min_x = system.x[0], max_x = system.x[0];
+    double min_y = system.y[0], max_y = system.y[0];
+    double min_z = system.z[0], max_z = system.z[0];
 
-    for (const auto& p : pos_mass) {
-        if (p.x < min_x) min_x = p.x; if (p.x > max_x) max_x = p.x;
-        if (p.y < min_y) min_y = p.y; if (p.y > max_y) max_y = p.y;
-        if (p.z < min_z) min_z = p.z; if (p.z > max_z) max_z = p.z;
+    for (size_t i = 1; i < system.size(); ++i) {
+        if (system.x[i] < min_x) min_x = system.x[i]; if (system.x[i] > max_x) max_x = system.x[i];
+        if (system.y[i] < min_y) min_y = system.y[i]; if (system.y[i] > max_y) max_y = system.y[i];
+        if (system.z[i] < min_z) min_z = system.z[i]; if (system.z[i] > max_z) max_z = system.z[i];
     }
 
     double span_x = max_x - min_x;
@@ -59,9 +59,11 @@ int main(int argc, char* argv[]) {
     double epsilon = std::stod(argv[9]);
 
     BodySystem system;
-    system.reserve(n);
-    std::vector<PosMass> accelerations(n, {0.0, 0.0, 0.0, 0.0});
+    system.resize(n);
 
+    std::vector<double> ax(n, 0.0);
+    std::vector<double> ay(n, 0.0);    
+    std::vector<double> az(n, 0.0);
 
     try {
         H5::H5File file(init_file, H5F_ACC_RDONLY);
@@ -79,21 +81,16 @@ int main(int argc, char* argv[]) {
         dataset_mass.read(mbuffer.data(), H5::PredType::NATIVE_DOUBLE);
 
         for (size_t i = 0; i < n; ++i) {
-            PosMass pm;
-            pm.x = rbuffer[i * 3];
-            pm.y = rbuffer[i * 3 + 1];
-            pm.z = rbuffer[i * 3 + 2];
-            pm.mass = mbuffer[i];
+            system.x[i] = rbuffer[i * 3];
+            system.y[i] = rbuffer[i * 3 + 1];
+            system.z[i] = rbuffer[i * 3 + 2];
+            system.mass[i] = mbuffer[i];
 
-            Velocity v;
-            v.vx = vbuffer[i * 3];
-            v.vy = vbuffer[i * 3 + 1];
-            v.vz = vbuffer[i * 3 + 2];
-            v.v_padding = 0.0;
+            system.vx[i] = vbuffer[i * 3];
+            system.vy[i] = vbuffer[i * 3 + 1];
+            system.vz[i] = vbuffer[i * 3 + 2];
 
-            system.pos_mass.push_back(pm);
-            system.velocities.push_back(v);
-            system.ids.push_back(static_cast<uint32_t>(i));
+            system.ids[i] = static_cast<uint32_t>(i);
         } 
     
     } catch (const H5::Exception& e) {
