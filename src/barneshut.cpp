@@ -154,11 +154,19 @@ void BarnesHut::partition_space(const BodySystem& system, const OctantDomain& bb
 
 
 void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_out, std::vector<double>& ay_out, std::vector<double>& az_out, double theta, double epsilon, double G) {
-    for (size_t i = 0; i < system.size(); ++i) {
-        double ax = 0.0, ay = 0.0, az = 0.0;
-        double px = system.x[i];
-        double py = system.y[i];
-        double pz = system.z[i];
+    if (nodes.empty()) return;
+    size_t n = system.size();
+
+    for (size_t i = 0; i < n; i += 4) {
+        int block_size = (n - i < 4) ? (n - i) : 4;
+        double ax[4] = {0.0}, ay[4] = {0.0}, az[4] = {0.0};
+        double px[4], py[4], pz[4];
+        
+        for (int k = 0; k < block_size; ++k) {
+            px[k] = system.x[i + k];
+            py[k] = system.y[i + k];
+            pz[k] = system.z[i + k];
+        }
 
         int32_t stack[512]; 
         int stack_ptr = 0;
@@ -169,30 +177,53 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
             const MultipoleNode& node = nodes[current_idx];
             const OctantDomain& octant = octants[current_idx];
 
-            if (node.M == 0.0 || node.body_idx == static_cast<int32_t>(i)) {
-                continue;
+            if (node.M == 0.0) continue;
+
+            bool self_interaction = false;
+            for(int k = 0; k < block_size; ++k) {
+                if (node.body_idx == static_cast<int32_t>(i + k)) self_interaction = true;
+            }
+            if (self_interaction) continue;
+            
+            double d2[4];
+            bool open_node = false;
+
+            for (int k = 0; k < block_size; ++k) {
+                double dx = node.x_cm - px[k];
+                double dy = node.y_cm - py[k];
+                double dz = node.z_cm - pz[k];
+                d2[k] = dx*dx + dy*dy + dz*dz + epsilon*epsilon;
+                
+                if ((octant.size * octant.size) >= (theta * theta * d2[k])) {
+                    // multipole acceptance criterion
+                    open_node = true; 
+                }
             }
 
-            double dx = node.x_cm - px;
-            double dy = node.y_cm - py;
-            double dz = node.z_cm - pz;
-            double d2 = dx*dx + dy*dy + dz*dz + epsilon*epsilon;
-
-            // multipole acceptance criterion
-            if (((octant.size * octant.size) < (theta * theta * d2)) || (node.first_child == -1)) {
-                double inv_d = 1.0 / std::sqrt(d2);
-                double a = G * node.M * inv_d * inv_d * inv_d;
-                ax += a * dx; 
-                ay += a * dy; 
-                az += a * dz; 
-            } else {
+            if (open_node && node.first_child != -1) {
                 for (int j = 0; j < 8; ++j) {
                     stack[stack_ptr++] = node.first_child + j;
                 }
+            } else {
+                for (int k = 0; k < block_size; ++k) {
+                    double dx = node.x_cm - px[k];
+                    double dy = node.y_cm - py[k];
+                    double dz = node.z_cm - pz[k];
+                    
+                    double inv_d = 1.0 / std::sqrt(d2[k]);
+                    double a = G * node.M * inv_d * inv_d * inv_d;
+                    
+                    ax[k] += a * dx;
+                    ay[k] += a * dy;
+                    az[k] += a * dz;
+                }
             }
         }
-        ax_out[i] = ax;
-        ay_out[i] = ay;
-        az_out[i] = az;
+
+        for (int k = 0; k < block_size; ++k) {
+            ax_out[i + k] = ax[k];
+            ay_out[i + k] = ay[k];
+            az_out[i + k] = az[k];
+        }
     }
 }
