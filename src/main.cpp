@@ -96,4 +96,43 @@ int main(int argc, char* argv[]) {
     } catch (const H5::Exception& e) {
         throw std::runtime_error("Unable to read initial conditions in'" + init_file + "'.");
     }
+
+    BarnesHut barnes_hut;
+    std::thread io_thread;
+
+    OctantDomain bbox = compute_bounds(system);
+    MortonCode::sort_system(system, bbox);
+    barnes_hut.partition_space(system, bbox);
+    barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);
+
+
+    for (int step = 0; step < total_steps; ++step) {
+        Integrator::velverlet_step1(system, ax, ay, az, dt);
+        OctantDomain bbox = compute_bounds(system);
+        if (bbox.max_span == 0.0) break;
+
+        MortonCode::sort_system(system, bbox);
+
+        barnes_hut.partition_space(system, bbox);
+        barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);
+
+        Integrator::velverlet_step2(system, ax, ay, az, dt);
+    
+        if (step % dump_freq == 0) {
+            if (io_thread.joinable()) {
+                io_thread.join();
+            }
+            
+            auto system_snapshot = std::make_shared<BodySystem>(system);
+            
+            io_thread = std::thread([output_dir, system_snapshot, step, total_steps]() {
+                IO::dump_frame(output_dir, *system_snapshot, step, total_steps);
+            });
+        }
+    }
+    if(io_thread.joinable()) {
+        io_thread.join();
+    }
+
+    return 0;
 }
