@@ -1,6 +1,7 @@
 #include "barneshut.h"
 #include <cmath>
 #include <algorithm>
+#include <omp.h>
 
 BarnesHut::BarnesHut() {
     nodes.resize(2500000); 
@@ -157,6 +158,7 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
     if (nodes.empty()) return;
     size_t n = system.size();
 
+    #pragma omp parallel for schedule(dynamic, 64)
     for (size_t i = 0; i < n; i += 4) {
         int block_size = (n - i < 4) ? (n - i) : 4;
         double ax[4] = {0.0}, ay[4] = {0.0}, az[4] = {0.0};
@@ -188,6 +190,7 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
             double d2[4];
             bool open_node = false;
 
+            #pragma omp simd
             for (int k = 0; k < block_size; ++k) {
                 double dx = node.x_cm - px[k];
                 double dy = node.y_cm - py[k];
@@ -205,6 +208,7 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
                     stack[stack_ptr++] = node.first_child + j;
                 }
             } else {
+                #pragma omp simd
                 for (int k = 0; k < block_size; ++k) {
                     double dx = node.x_cm - px[k];
                     double dy = node.y_cm - py[k];

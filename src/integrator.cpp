@@ -1,4 +1,5 @@
 #include "integrator.h"
+#include <omp.h>
 
 namespace Integrator {
 
@@ -6,6 +7,7 @@ namespace Integrator {
         double dt_half = 0.5 * dt;
         size_t n = system.size();
         
+        #pragma omp parallel for simd schedule(static)
         for (size_t i = 0; i < n; ++i) {
             system.vx[i] += ax[i] * dt_half;
             system.vy[i] += ay[i] * dt_half;
@@ -21,6 +23,7 @@ namespace Integrator {
         double dt_half = 0.5 * dt;
         size_t n = system.size();
 
+        #pragma omp parallel for simd schedule(dynamic, 64)
         for (size_t i = 0; i < n; ++i) {
             system.vx[i] += ax[i] * dt_half;
             system.vy[i] += ay[i] * dt_half;
