@@ -61,6 +61,9 @@ int main(int argc, char* argv[]) {
     BodySystem system;
     system.resize(n);
 
+    BodySystem morton_system;
+    morton_system.resize(n);
+
     std::vector<double> ax(n, 0.0);
     std::vector<double> ay(n, 0.0);    
     std::vector<double> az(n, 0.0);
@@ -101,7 +104,7 @@ int main(int argc, char* argv[]) {
     std::thread io_thread;
 
     OctantDomain bbox = compute_bounds(system);
-    MortonCode::sort_system(system, bbox);
+    MortonCode::sort_system(system, morton_system, bbox);
     barnes_hut.partition_space(system, bbox);
     barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);
 
@@ -111,7 +114,7 @@ int main(int argc, char* argv[]) {
         OctantDomain bbox = compute_bounds(system);
         if (bbox.max_span == 0.0) break;
 
-        MortonCode::sort_system(system, bbox);
+        MortonCode::sort_system(system, morton_system, bbox);
 
         barnes_hut.partition_space(system, bbox);
         barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);

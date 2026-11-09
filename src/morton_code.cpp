@@ -11,7 +11,7 @@ namespace MortonCode {
         uint32_t original_index;
     };
 
-    void sort_system(BodySystem& system, const OctantDomain& bbox) {
+    void sort_system(BodySystem& system, BodySystem& morton_system, const OctantDomain& bbox) {
         size_t n = system.size();
         if (n <= 1 || bbox.max_span == 0.0) return;
 
@@ -32,9 +32,6 @@ namespace MortonCode {
             return a.code < b.code;
         });
 
-        BodySystem morton_system;
-        morton_system.resize(n);
-
         for (size_t i = 0; i < n; ++i) {
             uint32_t orig_idx = codes[i].original_index;
             morton_system.x[i] = system.x[orig_idx];
@@ -49,13 +46,13 @@ namespace MortonCode {
             morton_system.ids[i] = system.ids[orig_idx];
         }
 
-        system.x = std::move(morton_system.x);
-        system.y = std::move(morton_system.y);
-        system.z = std::move(morton_system.z);
-        system.mass = std::move(morton_system.mass);
-        system.vx = std::move(morton_system.vx);
-        system.vy = std::move(morton_system.vy);
-        system.vz = std::move(morton_system.vz);
-        system.ids = std::move(morton_system.ids);
+        std::swap(system.x, morton_system.x);
+        std::swap(system.y, morton_system.y);
+        std::swap(system.z, morton_system.z);
+        std::swap(system.mass, morton_system.mass);
+        std::swap(system.vx, morton_system.vx);
+        std::swap(system.vy, morton_system.vy);
+        std::swap(system.vz, morton_system.vz);
+        std::swap(system.ids, morton_system.ids);
     }
 }
