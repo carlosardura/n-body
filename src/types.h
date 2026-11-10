@@ -12,10 +12,11 @@ struct alignas(64) OctantDomain {
 struct alignas(64) MultipoleNode {
     double x_cm = 0.0, y_cm = 0.0, z_cm = 0.0;
     double M = 0.0;
+    double mac2 = 0.0;
     int32_t first_child = -1;
+    int32_t next_node = -1;
     int32_t body_idx = -1;
     int32_t depth = 0;
-    int32_t padding_node[5] = {0, 0, 0, 0, 0};
 };
     
 

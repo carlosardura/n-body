@@ -105,8 +105,8 @@ int main(int argc, char* argv[]) {
 
     OctantDomain bbox = compute_bounds(system);
     MortonCode::sort_system(system, morton_system, bbox);
-    barnes_hut.partition_space(system, bbox);
-    barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);
+    barnes_hut.partition_space(system, bbox, theta);
+    barnes_hut.compute_force(system, ax, ay, az, epsilon, G);
 
 
     for (int step = 0; step < total_steps; ++step) {
@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
 
         MortonCode::sort_system(system, morton_system, bbox);
 
-        barnes_hut.partition_space(system, bbox);
-        barnes_hut.compute_force(system, ax, ay, az, theta, epsilon, G);
+        barnes_hut.partition_space(system, bbox, theta);
+        barnes_hut.compute_force(system, ax, ay, az, epsilon, G);
 
         Integrator::velverlet_step2(system, ax, ay, az, dt);
     

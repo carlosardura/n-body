@@ -29,6 +29,7 @@ int32_t BarnesHut::construct_cell(double xmin, double ymin, double zmin, double 
     node.first_child = -1;
     node.body_idx = -1;
     node.M = 0.0;
+    node.mac2 = (size * size) * this->inv_theta2;
     
     return idx;
 }
@@ -57,6 +58,7 @@ inline void BarnesHut::new_octant(int32_t cell_idx) {
         child_node.first_child = -1;
         child_node.body_idx = -1;
         child_node.M = 0.0;
+        child_node.mac2 = (half_size * half_size) * this->inv_theta2;
 
         double nx = (i & 1) ? mid_x : parent.xmin;
         double ny = (i & 2) ? mid_y : parent.ymin;
@@ -145,12 +147,44 @@ void BarnesHut::insert_body(int32_t cell_idx, size_t start, size_t end, const Bo
 }
 
 
-void BarnesHut::partition_space(const BodySystem& system, const OctantDomain& bbox) {
+void BarnesHut::partition_space(const BodySystem& system, const OctantDomain& bbox, double theta) {
     node_count = 0; 
     if (system.size() == 0) return;
 
+    this->inv_theta2 = 1.0 / (theta * theta);
+
     int32_t root_idx = construct_cell(bbox.xmin, bbox.ymin, bbox.zmin, bbox.max_span, 0);
     insert_body(root_idx, 0, system.size(), system);
+    validation_tree(0, -1);
+}
+
+void BarnesHut::validation_tree(int32_t node_idx, int32_t next_ptr) {
+    if (node_idx == -1) return;
+    
+    nodes[node_idx].next_node = next_ptr;
+    
+    if (nodes[node_idx].first_child != -1) {
+        int32_t valid_children[8];
+        int num_valid = 0;
+
+        for (int i = 0; i < 8; ++i) {
+            int32_t child_idx = nodes[node_idx].first_child + i;
+            if (nodes[child_idx].M > 0.0) {
+                valid_children[num_valid++] = child_idx;
+            }
+        }
+        
+        if (num_valid > 0) {
+            nodes[node_idx].first_child = valid_children[0];
+            
+            for (int i = 0; i < num_valid; ++i) {
+                int32_t child_next = (i == num_valid - 1) ? next_ptr : valid_children[i + 1];
+                validation_tree(valid_children[i], child_next);
+            }
+        } else {
+            nodes[node_idx].first_child = -1;
+        }
+    }
 }
 
 
@@ -170,43 +204,32 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
             pz[k] = system.z[i + k];
         }
 
-        int32_t stack[512]; 
-        int stack_ptr = 0;
-        stack[stack_ptr++] = 0;
+        int32_t current_idx = 0;
 
-        while (stack_ptr > 0) {
-            int32_t current_idx = stack[--stack_ptr];
+        while (current_idx != -1) {
             const MultipoleNode& node = nodes[current_idx];
-            const OctantDomain& octant = octants[current_idx];
 
-            if (node.M == 0.0) continue;
-
-            bool self_interaction = false;
-            for(int k = 0; k < block_size; ++k) {
-                if (node.body_idx == static_cast<int32_t>(i + k)) self_interaction = true;
-            }
-            if (self_interaction) continue;
-            
-            double d2[4];
-            bool open_node = false;
+            alignas(32) double dx[4], dy[4], dz[4], d2[4];
 
             #pragma omp simd
             for (int k = 0; k < block_size; ++k) {
-                double dx = node.x_cm - px[k];
-                double dy = node.y_cm - py[k];
-                double dz = node.z_cm - pz[k];
-                d2[k] = dx*dx + dy*dy + dz*dz + epsilon*epsilon;
-                
-                if ((octant.size * octant.size) >= (theta * theta * d2[k])) {
-                    // multipole acceptance criterion
-                    open_node = true; 
+                dx[k] = node.x_cm - px[k];
+                dy[k] = node.y_cm - py[k];
+                dz[k] = node.z_cm - pz[k];
+                d2[k] = dx[k]*dx[k] + dy[k]*dy[k] + dz[k]*dz[k] + epsilon*epsilon;
+            }
+
+                int open_node = 0;
+            if (node.first_child != -1) {
+                for (int k = 0; k < block_size; ++k) {
+                    if (node.mac2 >= d2[k]) {   // multipole acceptance criterion
+                        open_node = 1;
+                    }
                 }
             }
 
-            if (open_node && node.first_child != -1) {
-                for (int j = 0; j < 8; ++j) {
-                    stack[stack_ptr++] = node.first_child + j;
-                }
+            if (open_node) {
+                current_idx = node.first_child;
             } else {
                 #pragma omp simd
                 for (int k = 0; k < block_size; ++k) {
@@ -217,10 +240,11 @@ void BarnesHut::compute_force(const BodySystem& system, std::vector<double>& ax_
                     double inv_d = 1.0 / std::sqrt(d2[k]);
                     double a = G * node.M * inv_d * inv_d * inv_d;
                     
-                    ax[k] += a * dx;
-                    ay[k] += a * dy;
-                    az[k] += a * dz;
+                    ax[k] += a * dx[k];
+                    ay[k] += a * dy[k];
+                    az[k] += a * dz[k];
                 }
+                current_idx = node.next_node;
             }
         }
 
